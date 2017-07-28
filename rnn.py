@@ -10,6 +10,7 @@ import random
 import pickle
 import os
 from scipy.misc import logsumexp
+from math import log
 
 VOCAB_SIZE = 8000
 SENTENCE_START = "SENTENCE_START"
@@ -104,7 +105,7 @@ class RNN:
         y = T.ivector('y')
 
         def forwardPropagationStep(x_t, s_t_prev, U, V, W):
-            s_t = T.tanh(U[:,x_t] + W.dot(s_t_prev))
+            s_t = T.tanh(U[:,x_t] + W.dot(s_t_prev)) + 0.01*s_t_prev
             o_t = T.nnet.softmax(V.dot(s_t))
             #premax_o = V.dot(s_t)
             #o_t = np.exp(premax_o - logsumexp(premax_o))
@@ -208,19 +209,20 @@ def generateText(model, vocab_index_by_word, vocab_word_by_index, sentenceMaxLen
     generated = []
     for n in range(nSentences):
         sentence = [vocab_index_by_word[SENTENCE_START]]
-        for n in range(sentenceMaxLength):
+        for i in range(sentenceMaxLength):
             nextWordVec = model.forwardPropagation(sentence)
             sampleWord = vocab_index_by_word[UNKNOWN_TOKEN]
-            while vocab_index_by_word[UNKNOWN_TOKEN] == sampleWord:
+            #while vocab_index_by_word[UNKNOWN_TOKEN] == sampleWord or (nextWordVec[-1][sampleWord] > (0.25/(i+1)) and nextWordVec[-1][sampleWord] < (0.75-0.25/(i+1))):
+            while vocab_index_by_word[UNKNOWN_TOKEN] == sampleWord or (nextWordVec[-1][sampleWord] > (0.25 + 0.05*log(i+1)) and nextWordVec[-1][sampleWord] < (0.5-0.05*log(i+1))):
                 choices = range(len(nextWordVec[-1]))
                 sampleWord = np.random.choice(choices, p=nextWordVec[-1])
-                print(vocab_word_by_index[sampleWord], end=' has prob of ')
-                print(nextWordVec[-1][sampleWord])
-#                sampleWord = np.argmax(np.random.multinomial(1,nextWordVec[-1]))
+                #while np.sum(nextWordVec[-1]) > 1-1e-9:
+                #    nextWordVec[-1] /= (1+1e-5)
+                #sampleWord = np.argmax(np.random.multinomial(1,nextWordVec[-1]))
             sentence.append(sampleWord)
             if sampleWord == vocab_index_by_word[SENTENCE_END]:
                 break
-        generated.append(' '.join(translate(vocab_word_by_index, sentence)))
+        generated.append(' '.join(translate(vocab_word_by_index, sentence[1:-1])))
     return generated
 
 def getRNNModel(loadIfThere=False):
@@ -244,30 +246,10 @@ def main():
         _nepoch = int(sys.argv[3])
         _evaluateLossAfter = int(sys.argv[4])
         model.loss(x_train[:5000], y_train[:5000])
-        #trainWithSgd(model, x_train[:5000], y_train[:5000], learningRate=0.005, nepoch=15, evaluateLossAfter=1)
         trainWithSgd(model, x_train[:_trainingSize], y_train[:_trainingSize], learningRate=_learningRate, nepoch=_nepoch, evaluateLossAfter=_evaluateLossAfter)
         with open('RNNmodel.pickle', 'wb') as f:
             pickle.dump(model, f, pickle.HIGHEST_PROTOCOL)
-    generatedSentences = generateText(model, vocab_index_by_word, vocab_word_by_index, 25)
+    generatedSentences = generateText(model, vocab_index_by_word, vocab_word_by_index, 50, 25)
     for gSent in generatedSentences:
         print(gSent)
 main()
-
-#print('Expected loss', end=' : ')
-#print(np.log(VOCAB_SIZE))
-#print('Model loss', end=' : ')
-#print(model.loss(x_train[:1000], y_train[:1000]))
-
-# ---- TRAIN MODEL
-#trainWithSgd(model, x_train[:5000], y_train[:5000], learningRate=0.005, nepoch=15, evaluateLossAfter=1)
-#import pickle
-#with open('RNNmodel.pickle', 'wb') as f:
-#    pickle.dump(model, f, pickle.HIGHEST_PROTOCOL)
-
-# ---- USE MODEL
-#with open('RNNmodel.pickle', 'rb') as f:
-#    model = pickle.load(f)
-#print(model.loss(x_train[:5000], y_train[:5000]))
-#print(generateText(model, 25))
-
-
