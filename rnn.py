@@ -20,18 +20,18 @@ UNKNOWN_TOKEN = "UNKNOWN_TOKEN"
 # Tokenize bible text into words in sentences
 def buildVocabulary(loadIfThere=False):
     if loadIfThere:
-        if os.path.isfile('vocab_word_by_index.pickle') and os.path.isfile('vocab_index_by_word.pickle'):
-            with open('vocab_word_by_index.pickle', 'rb') as f:
+        if os.path.isfile('pickles/vocab_word_by_index.pickle') and os.path.isfile('pickles/vocab_index_by_word.pickle'):
+            with open('pickles/vocab_word_by_index.pickle', 'rb') as f:
                 vocab_word_by_index = pickle.load(f)
-                with open('vocab_index_by_word.pickle', 'rb') as f:
+                with open('pickles/vocab_index_by_word.pickle', 'rb') as f:
                     vocab_index_by_word = pickle.load(f)
-                    with open('tokens.pickle', 'rb') as f:
+                    with open('pickles/tokens.pickle', 'rb') as f:
                         tokens = pickle.load(f)
                         return vocab_word_by_index, vocab_index_by_word, tokens
     
     print('Tokenizing...')
     tokens = []
-    with open('bible.txt', 'r') as f:
+    with open('raw/bible.txt', 'r') as f:
         string = ''
         for line in f:
             if line.isspace():
@@ -63,11 +63,11 @@ def buildVocabulary(loadIfThere=False):
     random.shuffle(tokens)
     
     # Save vocab
-    with open('vocab_word_by_index.pickle', 'wb') as f:
+    with open('pickles/vocab_word_by_index.pickle', 'wb') as f:
         pickle.dump(vocab_word_by_index, f)
-    with open('vocab_index_by_word.pickle', 'wb') as f:
+    with open('pickles/vocab_index_by_word.pickle', 'wb') as f:
         pickle.dump(vocab_index_by_word, f)
-    with open('tokens.pickle', 'wb') as f:
+    with open('pickles/tokens.pickle', 'wb') as f:
         pickle.dump(tokens, f)
 
     return vocab_word_by_index, vocab_index_by_word, tokens
@@ -227,8 +227,8 @@ def generateText(model, vocab_index_by_word, vocab_word_by_index, sentenceMaxLen
 
 def getRNNModel(loadIfThere=False):
     if loadIfThere:
-        if os.path.isfile('RNNmodel.pickle'):
-            with open('RNNmodel.pickle', 'rb') as f:
+        if os.path.isfile('pickles/RNNmodel.pickle'):
+            with open('pickles/RNNmodel.pickle', 'rb') as f:
                 model = pickle.load(f)
                 return model
     model = RNN(VOCAB_SIZE)
@@ -247,7 +247,7 @@ def main():
         _evaluateLossAfter = int(sys.argv[4])
         model.loss(x_train[:5000], y_train[:5000])
         trainWithSgd(model, x_train[:_trainingSize], y_train[:_trainingSize], learningRate=_learningRate, nepoch=_nepoch, evaluateLossAfter=_evaluateLossAfter)
-        with open('RNNmodel.pickle', 'wb') as f:
+        with open('pickles/RNNmodel.pickle', 'wb') as f:
             pickle.dump(model, f, pickle.HIGHEST_PROTOCOL)
     generatedSentences = generateText(model, vocab_index_by_word, vocab_word_by_index, 50, 25)
     for gSent in generatedSentences:
